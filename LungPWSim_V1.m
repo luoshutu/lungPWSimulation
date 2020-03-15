@@ -3,8 +3,8 @@
 % By Luoshutu
 clear; clc;
 %% 初始化
-% path(path,'D:/MATLAB/Field_II_ver_3_24_windows_gcc');
-% field_init;
+path(path,'D:/MATLAB/Field_II_ver_3_24_windows_gcc');
+field_init;
 
 %% 设置仿真起始
 Start = 3;      % 从中心频率为Start*e6开始仿真
@@ -28,7 +28,6 @@ Ne             = 128;                 % 阵元数量
 focus          = [0 0 70]/1000;       % 固定焦点位置 [m] 
 focal_depth    = focus(3);            % 焦点深度
 array_size     = (kerf+width)*Ne;     % 阵元总宽度
-dz             = 1/(2*f0)*c/2;        % 距离方向分辨单元
 % Generate aperture for emission
 set_sampling(fs);
 %% 仿体设置
@@ -137,10 +136,11 @@ for p = 1:N
         end
     end
 end
-
+%% 
 fp = abs(fp);
-env = fp/max(max(fp));
-env = log(env + 0.1);
+ffp = fp(2000:end,:);
+env = ffp/max(max(ffp));
+env = 100*log(env + 10);
 env = env - min(min(env));
 env = 64*env/max(max(env));
 figure;
@@ -148,14 +148,14 @@ image(env); %axis image;
 colormap(jet(64)); colorbar;
 
 %% IQ解调
-[mm,nn]  = size(echo);
+[mm,nn]  = size(fp);
 Data_I = zeros(nn,mm);
 Data_Q = zeros(nn,mm);
 t = 0:mm-1;
 
 for i = 1:repeatNumber
-    Data_I(i,:) = cos(2*pi*f0/fs*t).*(echo(:,i).');
-    Data_Q(i,:) = sin(2*pi*f0/fs*t).*(echo(:,i).');
+    Data_I(i,:) = cos(2*pi*f0/fs*t).*(fp(:,i).');
+    Data_Q(i,:) = sin(2*pi*f0/fs*t).*(fp(:,i).');
 end
 
 % 滤波
@@ -181,28 +181,28 @@ for j = 1:repeatNumber
 end
 
 hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,1000,6e6,100e6),'butter');
-slowTimeSignal_I = filter(hd,slowTimeSignal_I);
-slowTimeSignal_Q = filter(hd,slowTimeSignal_Q);
+slowTimeSignal_I_fil = filter(hd,slowTimeSignal_I);
+slowTimeSignal_Q_fil = filter(hd,slowTimeSignal_Q);
 
 %% 慢时间短时傅里叶变换
 clear i;
 slowTimeSignal = slowTimeSignal_I + i*slowTimeSignal_Q;
-% hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,0.1,5,500),'butter');
-% slowTimeSignal = filter(hd,slowTimeSignal);
+hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,10,50e6,100e6),'butter');
+slowTimeSignal = filter(hd,slowTimeSignal);
 
 [S,F,T,~] = spectrogram(slowTimeSignal,256,250,256);
 figure;       
 S = fftshift(S,1);
-P = 20*log(1 + abs(S));
+P = 2000000000*log(1 + abs(S));
 [x,y]=size(S); 
 % subplot(Num,2,2*(cir_map-Start)+2);
-imagesc(P);
+image(P);
 colorbar;
 set(gca,'YDir','normal');
 % colormap(gray);
 xlabel('时间 t/s');ylabel('频率 f/Hz');
 axis off;
-axis([1 299 100 156]);
+% axis([1 299 100 156]);
 title(['短时傅里叶时频图',num2str(cir_map),'M']);
 % step = 20;
 % ind  = 0;
