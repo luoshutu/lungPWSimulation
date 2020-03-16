@@ -28,8 +28,7 @@ Ne             = 128;                 % 阵元数量
 focus          = [0 0 70]/1000;       % 固定焦点位置 [m] 
 focal_depth    = focus(3);            % 焦点深度
 array_size     = (kerf+width)*Ne;     % 阵元总宽度
-% Generate aperture for emission
-set_sampling(fs);
+
 %% 仿体设置
 N            = 10000;                        %仿体点数
 z_size       = 60/1000;                      %仿体深度[m]
@@ -54,10 +53,6 @@ z_muscle = randperm(round(N*(300/1000)),round(N*(200/1000))) + round(N*(200/1000
 for k = z_muscle
 	phantom_half(k,1) = amp(k,1); 
 end
-
-% figure(1);
-% plot(phantom_half);
-% title('phantom_half');
 
 %% 心跳信号设置
 heartRate = 80/60;  %心跳频率，每分钟80次
@@ -110,6 +105,8 @@ colormap(gray);
 
 %% 换能器设置
 % Generate aperture for emission
+% Generate aperture for emission
+set_sampling(fs);
 emit_aperture = xdc_linear_array (Ne, width, element_height, kerf, 1, 1,focus);
 focusPlane = zeros(Ne,1);
 xdc_focus_times(emit_aperture, 0, focusPlane.');

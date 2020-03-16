@@ -54,14 +54,10 @@ for k = z_muscle
 	phantom_half(k,1) = amp(k,1); 
 end
 
-% figure(1);
-% plot(phantom_half);
-% title('phantom_half');
-
 %% 心跳信号设置
 heartRate = 80/60;  %心跳频率，每分钟80次
 heartNum  = ceil(prf / heartRate); %一次心跳所占采样线数
-heartSignalAmp = round([0.00 1.00 0.95 0.73 0.20 -0.20 0.06 0.08 -0.03 0.00].*ceil(1e-3 / (z_size / N)));
+heartSignalAmp = round([0.00 1.00 0.95 0.73 0.20 -0.20 0.06 0.08 -0.03 0.00].*ceil(1e-4 / (z_size / N)));
 heartSignal = interp(heartSignalAmp,round(heartNum/length(heartSignalAmp)));
 figure;
 plot(heartSignal);
@@ -70,38 +66,30 @@ grid on;
 repeatNumber   = 1024;                                                  %发射次数
 PHANTOM        = zeros(N,repeatNumber);                                 %仿体缓存
 dam            = 5000;                                                  %仿体衰减,值越小衰减越大
-mobileRan      = -floor(MobileRange/2):1:floor(MobileRange/2);          %点中心位置移动值矩阵
-mobile_temp    = ceil(MobileRange/2);                                   %随机取值
-mixMN          = ceil(1.5e-3 / (z_size / N));                           %点每次运动与上一次点位置至少间隔距离
-mobileRan_temp = zeros(1,MobileRange);                                  %去除上一次中心点位置上下mixMN个数的移动值矩阵
 p_phantom_pha  = rand (1,N/2) * 2* pi;                                  %每个点的相位
 
 for i = 1:repeatNumber                              %卷积次数
     phantom = phantom_half;
-    POINT_mobile = mobileRan_temp(mobile_temp);     %本次THE POINT运动点数
-    POINT_position = round(N/2 + heartSignal(mod(i,length(heartSignal))+1)); %THE POINT位置
+    POINT_mobile = round(heartSignal(mod(i,length(heartSignal))+1));
+    POINT_position = round(N/2 - POINT_mobile); %THE POINT位置
     %THE POINT后面的仿体散射源为THE POINT前的镜像，且会随着THE POINT运动而运动
-    for p = 1:(POINT_position - floor(MobileRange/2))
-        phantom(POINT_position + floor(MobileRange/2) + p) = phantom(POINT_position - floor(MobileRange/2) - p + 1) / (((N-p)/dam)^3); %随距离3次方衰减
+    for p = 1:(POINT_position)
+        phantom(POINT_position + p) = phantom(POINT_position - p + 1) / (((N-p)/dam)^3); %随距离3次方衰减
     end
     
     %THE POINT幅值，随扫描次数变化，为20到30倍之前仿体最大值之间的随机值
     POINT_Am  = (randperm(10,1)+20)*max(phantom_half);
     phantom(POINT_position,1) = POINT_Am;
-%     Line_mobile = randperm(64,1) - 32;
-%     phantom(N/2 + Line_mobile - 3 : N/2 + Line_mobile + 3,1) = POINT_Am;
-
-    %每次移动的移动范围限制，在移动值矩阵中去除上一次中心位置上下mixMN个数
-    if mobile_temp < mixMN + 1
-        mobileRan_temp = mobileRan((mobile_temp+mixMN):end);
-    elseif mobile_temp > MobileRange - mixMN
-        mobileRan_temp = mobileRan(1:(mobile_temp-mixMN));
+    
+    phantom = phantom(1:N);
+    clear j;
+    if POINT_position+4999 > N
+    	phantom(POINT_position:end) = phantom(POINT_position:end).*exp(j*p_phantom_pha(1:(N - POINT_position + 1)));
     else
-        mobileRan_temp = [mobileRan(1:mobile_temp-mixMN) mobileRan(mobile_temp+mixMN:end)];
+        phantom(POINT_position:POINT_position+4999) = phantom(POINT_position:POINT_position+4999).*exp(j*p_phantom_pha);
     end
-    mobile_temp = randperm(length(mobileRan_temp),1);
-      
-    PHANTOM(:,i) = phantom(1:N);         %存储仿体
+    
+    PHANTOM(:,i) = phantom;         %存储仿体
 end
 
 figure;
@@ -182,49 +170,29 @@ for j = 1:repeatNumber
     slowTimeSignal_Q(j,1) = sum(Data_Q_fil(floor(mm/2 + MobileRange):floor(mm/2 + MobileRange*4),j));
 end
 
-hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,1000,6e6,100e6),'butter');
-slowTimeSignal_I_fil = filter(hd,slowTimeSignal_I);
-slowTimeSignal_Q_fil = filter(hd,slowTimeSignal_Q);
+% hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,1000,6e6,100e6),'butter');
+% slowTimeSignal_I_fil = filter(hd,slowTimeSignal_I);
+% slowTimeSignal_Q_fil = filter(hd,slowTimeSignal_Q);
 
 %% 慢时间短时傅里叶变换
 clear i;
 slowTimeSignal = slowTimeSignal_I + i*slowTimeSignal_Q;
-hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,10,50e6,100e6),'butter');
-slowTimeSignal = filter(hd,slowTimeSignal);
+% hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,10,50e6,100e6),'butter');
+% slowTimeSignal = filter(hd,slowTimeSignal);
 
 [S,F,T,~] = spectrogram(slowTimeSignal,256,250,256);
 figure;       
 S = fftshift(S,1);
-P = 2000000000*log(1 + abs(S));
+P = 20*log(1 + abs(S));
 [x,y]=size(S); 
 % subplot(Num,2,2*(cir_map-Start)+2);
-image(P);
-colorbar;
+image(P); colorbar;
 set(gca,'YDir','normal');
 % colormap(gray);
 xlabel('时间 t/s');ylabel('频率 f/Hz');
 axis off;
 % axis([1 299 100 156]);
 title(['短时傅里叶时频图',num2str(cir_map),'M']);
-% step = 20;
-% ind  = 0;
-% for i = 1: step: repeatNumber - 128
-%     ind = ind+1;
-%     v = heartSignal(mod(i,length(heartSignal))+1) + 1;
-% 
-%     distancePerPulse = v/prf;  % v unit mm/s
-%     n =lateralRes/distancePerPulse;
-%     n = floor (n); 
-%     lateralFilter = ones (1,n)/n; %构建一个和频率及速度还有PRF都相关的慢时间方向上的滤波器
-%  
-%     slowsig = slowTimeSignal (i:i+128);
-%     slowsig = conv (slowsig, lateralFilter, 'same');
-%     im(:,ind)= fftshift(abs(fft(slowsig)));
-% end
-% im(65,:)=0;
-% figure;
-% imagesc(20*log(0.1+im))
-% title(['PW图',num2str(cir_map),'M']);
 end
 
 
