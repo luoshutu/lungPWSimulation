@@ -3,8 +3,8 @@
 % By Luoshutu
 clear; clc;
 %% 初始化
-path(path,'D:/MATLAB/Field_II_ver_3_24_windows_gcc');
-field_init;
+% path(path,'D:/MATLAB/Field_II_ver_3_24_windows_gcc');
+% field_init;
 
 %% 设置仿真起始
 Start = 3;      % 从中心频率为Start*e6开始仿真
@@ -18,8 +18,8 @@ f0             = cir_map*(1e6);
 fs             = 100e6;               % 仿真使用的采样频率
 c              = 1540;                % 声速 [m/s]
 lambda         = c/f0;                % 波长 [m]
-prf            = 200;                 % 脉冲重复频率Hz/s
-lateralRes     =  1 / (f0/0.5e6);     % unit : mm 假设3兆时，横向分辨率为1毫米
+prf            = 500;                 % 脉冲重复频率Hz/s
+lateralRes     = 1 / (f0/0.5e6);      % unit : mm 假设3兆时，横向分辨率为1毫米
 
 width          = 0.3/1000;            % 阵元宽度 [m]
 element_height = 5/1000;              % 阵元高度 [m]
@@ -28,11 +28,9 @@ Ne             = 128;                 % 阵元数量
 focus          = [0 0 70]/1000;       % 固定焦点位置 [m] 
 focal_depth    = focus(3);            % 焦点深度
 array_size     = (kerf+width)*Ne;     % 阵元总宽度
-dz             = 1/(2*f0)*c/2;        % 距离方向分辨单元
-% Generate aperture for emission
-set_sampling(fs);
+
 %% 仿体设置
-N            = 100;                        %仿体点数
+N            = 10000;                        %仿体点数
 z_size       = 60/1000;                      %仿体深度[m]
 MobileRange  = ceil(4e-3 / (z_size / N));    %点运动范围，4mm
 phantom_half = zeros(N,1);    
@@ -69,27 +67,29 @@ figure;
 plot(heartSignal);
 grid on;
 %% 仿体随时间变化为二维
-repeatNumber   = 200;                                                  %发射次数
+repeatNumber   = 1024;                                                  %发射次数
 PHANTOM        = zeros(N,repeatNumber);                                 %仿体缓存
 dam            = 5000;                                                  %仿体衰减,值越小衰减越大
 mobileRan      = -floor(MobileRange/2):1:floor(MobileRange/2);          %点中心位置移动值矩阵
 mobile_temp    = ceil(MobileRange/2);                                   %随机取值
 mixMN          = ceil(1.5e-3 / (z_size / N));                           %点每次运动与上一次点位置至少间隔距离
 mobileRan_temp = zeros(1,MobileRange);                                  %去除上一次中心点位置上下mixMN个数的移动值矩阵
+p_phantom_pha  = rand (1,N/2) * 2* pi;                                  %每个点的相位
 
 for i = 1:repeatNumber                              %卷积次数
     phantom = phantom_half;
     POINT_mobile = mobileRan_temp(mobile_temp);     %本次THE POINT运动点数
-    POINT_position = round(N/2 + POINT_mobile + heartSignal(mod(i,length(heartSignal))+1));            %THE POINT位置
-    Line_mobile = randperm(64,1) - 32;
+    POINT_position = round(N/2 + heartSignal(mod(i,length(heartSignal))+1)); %THE POINT位置
     %THE POINT后面的仿体散射源为THE POINT前的镜像，且会随着THE POINT运动而运动
     for p = 1:(POINT_position - floor(MobileRange/2))
         phantom(POINT_position + floor(MobileRange/2) + p) = phantom(POINT_position - floor(MobileRange/2) - p + 1) / (((N-p)/dam)^3); %随距离3次方衰减
     end
     
     %THE POINT幅值，随扫描次数变化，为20到30倍之前仿体最大值之间的随机值
-    POINT_Am  = (randperm(10,1)+20)*max(phantom_half);  
-    phantom(N/2 + Line_mobile - 3 : N/2 + Line_mobile + 3,1) = POINT_Am;
+    POINT_Am  = (randperm(10,1)+20)*max(phantom_half);
+    phantom(POINT_position,1) = POINT_Am;
+%     Line_mobile = randperm(64,1) - 32;
+%     phantom(N/2 + Line_mobile - 3 : N/2 + Line_mobile + 3,1) = POINT_Am;
 
     %每次移动的移动范围限制，在移动值矩阵中去除上一次中心位置上下mixMN个数
     if mobile_temp < mixMN + 1
@@ -111,6 +111,7 @@ colormap(gray);
 
 %% 换能器设置
 % Generate aperture for emission
+set_sampling(fs);
 emit_aperture = xdc_linear_array (Ne, width, element_height, kerf, 1, 1,focus);
 focusPlane = zeros(Ne,1);
 xdc_focus_times(emit_aperture, 0, focusPlane.');
@@ -124,31 +125,24 @@ excitation=sin(2*pi*f0*(0:1/fs:8/f0));
 xdc_excitation (emit_aperture, excitation);
 
 %% 计算声场
-pha_Pos        = zeros(1,3);                               %仿体位置
-ind = 0;
-phantomPosition = pha_Pos(1:ind,:);
+pha_Pos    = zeros(1, 3); 
+fp         = zeros(N, repeatNumber);
 for p = 1:N
     for q = 1:repeatNumber
         if PHANTOM(p,q) ~= 0 
-            ind = ind + 1;
-            pha_Pos(ind, 1) = (q - repeatNumber/2) / repeatNumber * 127 * (kerf+width) + width;
-            pha_Pos(ind, 2) = 0;
-            pha_Pos(ind, 3) = p * (z_size / N);
-            
+            pha_Pos(1, 1) = (q - repeatNumber/2) / repeatNumber * 127 * (kerf+width) + width;
+            pha_Pos(1, 2) = 0;
+            pha_Pos(1, 3) = p * (z_size / N);
+            [hp, start_time] = calc_hp(emit_aperture,pha_Pos);
+            fp(p, q) = max(hp(:,1));
         end
     end
 end
-
-
-clear pha_Pos;
-
-[hp, start_time] = calc_hp(emit_aperture,phantomPosition);
-fp(z, x) = max(hp(:,1));
-hp = hp/max(hp(:));
-
-fp = abs(hp);
-env = fp/max(max(fp));
-env = log(env + 0.1);
+%% 
+fp = abs(fp);
+ffp = fp(2000:end,:);
+env = ffp/max(max(ffp));
+env = 100*log(env + 10);
 env = env - min(min(env));
 env = 64*env/max(max(env));
 figure;
@@ -156,14 +150,14 @@ image(env); %axis image;
 colormap(jet(64)); colorbar;
 
 %% IQ解调
-[mm,nn]  = size(echo);
+[mm,nn]  = size(fp);
 Data_I = zeros(nn,mm);
 Data_Q = zeros(nn,mm);
 t = 0:mm-1;
 
 for i = 1:repeatNumber
-    Data_I(i,:) = cos(2*pi*f0/fs*t).*(echo(:,i).');
-    Data_Q(i,:) = sin(2*pi*f0/fs*t).*(echo(:,i).');
+    Data_I(i,:) = cos(2*pi*f0/fs*t).*(fp(:,i).');
+    Data_Q(i,:) = sin(2*pi*f0/fs*t).*(fp(:,i).');
 end
 
 % 滤波
@@ -189,28 +183,28 @@ for j = 1:repeatNumber
 end
 
 hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,1000,6e6,100e6),'butter');
-slowTimeSignal_I = filter(hd,slowTimeSignal_I);
-slowTimeSignal_Q = filter(hd,slowTimeSignal_Q);
+slowTimeSignal_I_fil = filter(hd,slowTimeSignal_I);
+slowTimeSignal_Q_fil = filter(hd,slowTimeSignal_Q);
 
 %% 慢时间短时傅里叶变换
 clear i;
 slowTimeSignal = slowTimeSignal_I + i*slowTimeSignal_Q;
-% hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,0.1,5,500),'butter');
-% slowTimeSignal = filter(hd,slowTimeSignal);
+hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,10,50e6,100e6),'butter');
+slowTimeSignal = filter(hd,slowTimeSignal);
 
 [S,F,T,~] = spectrogram(slowTimeSignal,256,250,256);
 figure;       
 S = fftshift(S,1);
-P = 20*log(1 + abs(S));
+P = 2000000000*log(1 + abs(S));
 [x,y]=size(S); 
 % subplot(Num,2,2*(cir_map-Start)+2);
-imagesc(P);
+image(P);
 colorbar;
 set(gca,'YDir','normal');
 % colormap(gray);
 xlabel('时间 t/s');ylabel('频率 f/Hz');
 axis off;
-axis([1 299 100 156]);
+% axis([1 299 100 156]);
 title(['短时傅里叶时频图',num2str(cir_map),'M']);
 % step = 20;
 % ind  = 0;
