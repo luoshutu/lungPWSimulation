@@ -25,13 +25,13 @@ width          = 0.3/1000;            % 阵元宽度 [m]
 element_height = 5/1000;              % 阵元高度 [m]
 kerf           = 0.1/1000;            % 阵元间隙宽度 [m]
 Ne             = 128;                 % 阵元数量
-focus          = [0 0 70]/1000;       % 固定焦点位置 [m] 
+focus          = [0 0 50]/1000;       % 固定焦点位置 [m] 
 focal_depth    = focus(3);            % 焦点深度
 array_size     = (kerf+width)*Ne;     % 阵元总宽度
 
 %% 仿体设置
-N            = 10000;                        %仿体点数
-z_size       = 60/1000;                      %仿体深度[m]
+N            = 10000;                 % 仿体点数
+z_size       = 60/1000;               % 仿体深度[m]
 MobileRange  = ceil(4e-3 / (z_size / N));    %点运动范围，4mm
 phantom_half = zeros(N,1);    
 amp          = randn(N/2,1);
@@ -63,12 +63,12 @@ figure;
 plot(heartSignal);
 grid on;
 %% 仿体随时间变化为二维
-repeatNumber   = 1024;                                                  %发射次数
-PHANTOM        = zeros(N,repeatNumber);                                 %仿体缓存
-dam            = 5000;                                                  %仿体衰减,值越小衰减越大
-p_phantom_pha  = rand (1,N/2) * 2* pi;                                  %每个点的相位
+repeatNumber   = 1024;                              % 发射次数
+PHANTOM        = zeros(N,repeatNumber);             % 仿体缓存
+dam            = 7e3;                               % 仿体衰减,值越小衰减越大
+p_phantom_pha  = rand(N/2, 1) * 2 * pi;             % 每个点的相位
 
-for i = 1:repeatNumber                              %卷积次数
+for i = 1:repeatNumber                              % 卷积次数
     phantom = phantom_half;
     POINT_mobile = round(heartSignal(mod(i,length(heartSignal))+1));
     POINT_position = round(N/2 - POINT_mobile); %THE POINT位置
@@ -78,10 +78,10 @@ for i = 1:repeatNumber                              %卷积次数
     end
     
     %THE POINT幅值，随扫描次数变化，为20到30倍之前仿体最大值之间的随机值
-    POINT_Am  = (randperm(10,1)+20)*max(phantom_half);
+    POINT_Am  = (randperm(10,1)+5)*max(phantom_half);
     phantom(POINT_position,1) = POINT_Am;
-    
     phantom = phantom(1:N);
+    
     clear j;
     if POINT_position+4999 > N
     	phantom(POINT_position:end) = phantom(POINT_position:end).*exp(j*p_phantom_pha(1:(N - POINT_position + 1)));
@@ -101,8 +101,8 @@ colormap(gray);
 % Generate aperture for emission
 set_sampling(fs);
 emit_aperture = xdc_linear_array (Ne, width, element_height, kerf, 1, 1,focus);
-focusPlane = zeros(Ne,1);
-xdc_focus_times(emit_aperture, 0, focusPlane.');
+% focusPlane = zeros(Ne,1);
+% xdc_focus_times(emit_aperture, 0, focusPlane.');
 %% 设置脉冲响应以及激励脉冲
 % Set the impulse response and excitation of the emit aperture
 impulse_response=sin(2*pi*f0*(0:1/fs:8/f0));
@@ -113,51 +113,66 @@ excitation=sin(2*pi*f0*(0:1/fs:8/f0));
 xdc_excitation (emit_aperture, excitation);
 
 %% 计算声场
-pha_Pos    = zeros(1, 3); 
-fp         = zeros(N, repeatNumber);
-for p = 1:N
-    for q = 1:repeatNumber
-        if PHANTOM(p,q) ~= 0 
-            pha_Pos(1, 1) = (q - repeatNumber/2) / repeatNumber * 127 * (kerf+width) + width;
-            pha_Pos(1, 2) = 0;
-            pha_Pos(1, 3) = p * (z_size / N);
-            [hp, start_time] = calc_hp(emit_aperture,pha_Pos);
-            fp(p, q) = max(hp(:,1));
-        end
+fieldWidth    = 63;                                   % 所计算声场的水平方向点数,奇数
+fieldLength   = 63;%round((fieldWidth * (array_size / repeatNumber)) / (z_size / N));
+fieldRadius   = floor(fieldWidth / 2);                % 所计算声场的水平方向半径
+pha_Pos       = zeros(1, 3);                          % 计算声场的点位置
+depthCenter   = round(focal_depth / (z_size / N));    % 整个发射声场的深度方向中心点
+horCenter     = round(repeatNumber / 2);              % 整个发射声场的水平方向中心点
+fp            = zeros(fieldLength, fieldWidth);  % 声场缓存 
+
+if mod(fieldLength, 2) == 0
+    fieldLength = fieldLength + 1;
+end
+
+ind = 0;
+for p = depthCenter - floor(fieldLength / 2):depthCenter + floor(fieldLength / 2)
+    ind = ind + 1;
+    for q = horCenter - fieldRadius:horCenter + fieldRadius
+        pha_Pos(1, 1) = (q - repeatNumber/2) * (array_size / repeatNumber);
+        pha_Pos(1, 2) = 0;
+        pha_Pos(1, 3) = p * (z_size / N);
+        [hp, start_time] = calc_hp(emit_aperture,pha_Pos);
+        fp(ind, q - (horCenter - fieldRadius) + 1) = max(hp(:,1));
     end
 end
-%% 
-fp = abs(fp);
-ffp = fp(2000:end,:);
-env = ffp/max(max(ffp));
-env = 100*log(env + 10);
-env = env - min(min(env));
-env = 64*env/max(max(env));
+%% 画声场图
 figure;
-image(env); %axis image;
-colormap(jet(64)); colorbar;
+imagesc(20*log(0.1 + abs(fp)));
+title('声场');
+% colormap(gray);
 
+%% 卷积得回波
+echo = conv2(fp, PHANTOM);
+
+% %% 画卷积结果图
+figure;
+imagesc(20*log(1 + abs(echo + 1)));
+title('卷积回波');
+colormap(gray);
 %% IQ解调
-[mm,nn]  = size(fp);
+[mm,nn]  = size(echo);
 Data_I = zeros(nn,mm);
 Data_Q = zeros(nn,mm);
 t = 0:mm-1;
 
-for i = 1:repeatNumber
-    Data_I(i,:) = cos(2*pi*f0/fs*t).*(fp(:,i).');
-    Data_Q(i,:) = sin(2*pi*f0/fs*t).*(fp(:,i).');
+for i = 1:nn
+    Data_I(i,:) = cos(2*pi*f0/fs*t).*(echo(:,i).');
+    Data_Q(i,:) = sin(2*pi*f0/fs*t).*(echo(:,i).');
 end
 
 % 滤波
-Data_I_fil = filter(Filter_IIR_L_2M,Data_I.');
-Data_Q_fil = filter(Filter_IIR_L_2M,Data_Q.');
+hd   = design(fdesign.lowpass('N,F3dB',16,4e6,100e6),'butter');
+Data_I_fil = filter(hd,Data_I.');
+Data_Q_fil = filter(hd,Data_Q.');
 
 %% 显示M模式
+% Data_Amp = sqrt((Data_I).*(Data_I) + (Data_Q).*(Data_Q));
 Data_Amp = sqrt((Data_I_fil).*(Data_I_fil) + (Data_Q_fil).*(Data_Q_fil));
 D=20;   %  下采样抽取率
 figure;
 % subplot(Num,2,2*(cir_map-Start)+1);
-imagesc(20*log(1 + abs(Data_Amp(1:D:end,:))));
+imagesc(20*log10(1 + abs(Data_Amp(1:D:end,:))));
 title(['M模式',num2str(cir_map),'M']);
 colormap(gray);
 
@@ -184,14 +199,14 @@ slowTimeSignal = slowTimeSignal_I + i*slowTimeSignal_Q;
 figure;       
 S = fftshift(S,1);
 P = 20*log(1 + abs(S));
-[x,y]=size(S); 
+[x,y] = size(P);
 % subplot(Num,2,2*(cir_map-Start)+2);
-image(P); colorbar;
+imagesc(P); colorbar;
 set(gca,'YDir','normal');
 % colormap(gray);
 xlabel('时间 t/s');ylabel('频率 f/Hz');
-axis off;
-% axis([1 299 100 156]);
+% axis off;
+axis([1 y x/2 - 20 x/2 + 20]);
 title(['短时傅里叶时频图',num2str(cir_map),'M']);
 end
 

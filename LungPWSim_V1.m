@@ -133,7 +133,7 @@ for p = 1:N
         end
     end
 end
-%% 
+%% »­Éù³¡Í¼
 fp = abs(fp);
 ffp = fp(2000:end,:);
 env = ffp/max(max(ffp));

@@ -12,13 +12,13 @@ f0          = cir_map*(1e6);
 fs          = 100e6;	% 仿真使用的采样频率
 c           = 1540;     % 声速 [m/s]
 lambda      = c/f0;     % 波长 [m]
-prf         = 1000;      %脉冲重复频率Hz/s
+prf         = 500;      %脉冲重复频率Hz/s
 lateralRes  =  1 / (f0/0.5e6); %unit : mm 假设3兆时，横向分辨率为1毫米
 
 %% 仿体设置
 N            = 10000;                        %仿体点数
 z_size       = 60/1000;                      %仿体深度[m]
-MobileRange  = ceil(4e-3 / (z_size / N));    %点运动范围，3mm
+MobileRange  = ceil(4e-3 / (z_size / N));    %点运动范围，4mm
 phantom_half = zeros(N,1);    
 amp          = randn(N/2,1);
 
@@ -40,10 +40,6 @@ for k = z_muscle
 	phantom_half(k,1) = amp(k,1); 
 end
 
-% figure(1);
-% plot(phantom_half);
-% title('phantom_half');
-
 %% 心跳信号设置
 heartRate = 80/60;  %心跳频率，每分钟80次
 heartNum  = ceil(prf / heartRate); %一次心跳所占采样线数
@@ -57,11 +53,11 @@ excitation_pulse = sin(2*pi*f0*(0:1/fs:8/f0));
 excitation_pulse = excitation_pulse.*hanning(max(size(excitation_pulse)))';
 
 %% 卷积
-repeatNumber   = 8192;                                                  %发射次数
-echo           = zeros(N + length(excitation_pulse) - 1,repeatNumber);  %卷积结果缓存
-PHANTOM        = zeros(N,repeatNumber);                                 %仿体缓存
-dam            = 5000;                                                  %仿体衰减,值越小衰减越大
-p_phantom_pha  = rand (N/2,1) * 2* pi;                                  %每个点的相位
+repeatNumber   = 2048;                                                  % 发射次数
+echo           = zeros(N + length(excitation_pulse) - 1,repeatNumber);  % 卷积结果缓存
+PHANTOM        = zeros(N, repeatNumber);                                % 仿体缓存
+dam            = 5e3;                                                   % 仿体衰减,值越小衰减越大
+p_phantom_pha  = rand(N/2, 1) * 2 * pi;                                 % 每个点的相位
 
 for i = 1:repeatNumber                              %卷积次数
     phantom = phantom_half;
@@ -75,15 +71,15 @@ for i = 1:repeatNumber                              %卷积次数
     %THE POINT幅值，随扫描次数变化，为20到30倍之前仿体最大值之间的随机值
     POINT_Am  = (randperm(10,1)+20)*max(phantom_half);
     phantom(POINT_position,1) = POINT_Am;
-%     Line_mobile = randperm(64,1) - 32;
-%     phantom(N/2 + Line_mobile - 3 : N/2 + Line_mobile + 3,1) = POINT_Am;
     phantom = phantom(1:N);
+    
     clear j;
     if POINT_position+4999 > N
     	phantom(POINT_position:end) = phantom(POINT_position:end).*exp(j*p_phantom_pha(1:(N - POINT_position + 1)));
     else
         phantom(POINT_position:POINT_position+4999) = phantom(POINT_position:POINT_position+4999).*exp(j*p_phantom_pha);
     end
+    
     PHANTOM(:,i) = phantom;         %存储仿体
     
     %卷积
@@ -110,8 +106,9 @@ for i = 1:repeatNumber
 end
 
 % 滤波
-Data_I_fil = filter(Filter_IIR_L_2M,Data_I.');
-Data_Q_fil = filter(Filter_IIR_L_2M,Data_Q.');
+hd   = design(fdesign.lowpass('N,F3dB',16,4e6,100e6),'butter');
+Data_I_fil = filter(hd,Data_I.');
+Data_Q_fil = filter(hd,Data_Q.');
 
 %% 显示M模式
 Data_Amp = sqrt((Data_I_fil).*(Data_I_fil) + (Data_Q_fil).*(Data_Q_fil));
@@ -138,7 +135,7 @@ end
 %% 慢时间短时傅里叶变换
 clear i;
 slowTimeSignal = slowTimeSignal_I + i*slowTimeSignal_Q;
-% hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,0.1,5,500),'butter');
+% hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,1,4e5,1e6),'butter');
 % slowTimeSignal = filter(hd,slowTimeSignal);
 
 [S,F,T,~] = spectrogram(slowTimeSignal,256,250,256);
