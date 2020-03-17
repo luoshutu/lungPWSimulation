@@ -13,7 +13,6 @@ fs          = 100e6;	% 仿真使用的采样频率
 c           = 1540;     % 声速 [m/s]
 lambda      = c/f0;     % 波长 [m]
 prf         = 500;      %脉冲重复频率Hz/s
-lateralRes  =  1 / (f0/0.5e6); %unit : mm 假设3兆时，横向分辨率为1毫米
 
 %% 仿体设置
 N            = 10000;                        %仿体点数
@@ -142,7 +141,7 @@ slowTimeSignal = slowTimeSignal_I + i*slowTimeSignal_Q;
 figure;       
 S = fftshift(S,1);
 P = 20*log(1 + abs(S));
-[x,y]=size(S); 
+[x,y]=size(P); 
 % subplot(Num,2,2*(cir_map-Start)+2);
 imagesc(P);
 colorbar;
@@ -150,20 +149,24 @@ set(gca,'YDir','normal');
 % colormap(gray);
 xlabel('时间 t/s');ylabel('频率 f/Hz');
 axis off;
-% axis([1 299 100 156]);
+% axis([1 y x/2 - 20 x/2 + 20]);
 title(['短时傅里叶时频图',num2str(cir_map),'M']);
+
+% lateralRes  = 1 / (f0/0.5e6); %unit : mm 假设3兆时，横向分辨率为1毫米
 % step = 20;
 % ind  = 0;
 % for i = 1: step: repeatNumber - 128
 %     ind = ind+1;
-%     v = heartSignal(mod(i,length(heartSignal))+1) + 1;
+%     v = heartSignal(mod(i,length(heartSignal))+1);
 % 
 %     distancePerPulse = v/prf;  % v unit mm/s
-%     n =lateralRes/distancePerPulse;
+%     n = lateralRes/distancePerPulse;
 %     n = floor (n); 
-%     lateralFilter = ones (1,n)/n; %构建一个和频率及速度还有PRF都相关的慢时间方向上的滤波器
+%     nn(i) = n;
+%     lateralFilter = sinc(-abs(n)/2 :0.1: abs(n)/2)/n; %构建一个和频率及速度还有PRF都相关的慢时间方向上的滤波器
 %  
 %     slowsig = slowTimeSignal (i:i+128);
+% %     slowsig = echo(5100,i:i+128);
 %     slowsig = conv (slowsig, lateralFilter, 'same');
 %     im(:,ind)= fftshift(abs(fft(slowsig)));
 % end

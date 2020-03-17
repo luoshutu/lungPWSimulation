@@ -3,8 +3,8 @@
 % By Luoshutu
 clear; clc;
 %% 初始化
-% path(path,'D:/MATLAB/Field_II_ver_3_24_windows_gcc');
-% field_init;
+path(path,'D:/MATLAB/Field_II_ver_3_24_windows_gcc');
+field_init;
 
 %% 设置仿真起始
 Start = 3;      % 从中心频率为Start*e6开始仿真

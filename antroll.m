@@ -19,7 +19,8 @@ for i =1 : num_lines
     echostrength_liver (time,i) = sum(abs(PSF.* liver_phantom.*exp(j*p_phantom_pha(window))));
     echostrength_lung (time,i) = sum(abs(PSF.* lung_phantom.*exp(j*p_phantom_pha(window))));
 end
-% imagesc(echostrength(time,:)); pause(0.3)
+imagesc(echostrength_lung(time,:)); pause(0.1)
 end 
+figure;
   subplot(121); imagesc(echostrength_liver); title('liver sliding')
   subplot(122); imagesc(echostrength_lung); title('lung sliding')
