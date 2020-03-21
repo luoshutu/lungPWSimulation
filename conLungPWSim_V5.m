@@ -62,7 +62,7 @@ p_phantom_pha  = rand(N/2, 1) * 2 * pi;                                 % 每个点
 for i = 1:repeatNumber                              %卷积次数
     phantom = phantom_half;
     POINT_mobile = round(heartSignal(mod(i,length(heartSignal))+1));
-    POINT_position = round(N/2 - POINT_mobile); %THE POINT位置
+    POINT_position = round(N/2);% - POINT_mobile); %THE POINT位置
     %THE POINT后面的仿体散射源为THE POINT前的镜像，且会随着THE POINT运动而运动
     for p = 1:(POINT_position)
         phantom(POINT_position + p) = phantom(POINT_position - p + 1) / (((N-p)/dam)^3); %随距离3次方衰减
@@ -135,8 +135,8 @@ end
 %% 慢时间短时傅里叶变换
 clear i;
 slowTimeSignal = slowTimeSignal_I + i*slowTimeSignal_Q;
-hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,10000,5e5,1e6),'butter');
-slowTimeSignal = filter(hd,slowTimeSignal);
+% hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,10000,5e5,1e6),'butter');
+% slowTimeSignal = filter(hd,slowTimeSignal);
 
 [S,F,T,~] = spectrogram(slowTimeSignal,256,250,256);
 figure;       
