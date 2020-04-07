@@ -84,6 +84,7 @@ set_sampling(fs);
 emit_aperture = xdc_linear_array (Ne, width, element_height, kerf, 1, 1,focus);
 focusPlane = zeros(Ne,1);
 xdc_focus_times(emit_aperture, 0, focusPlane.');
+
 %% ÉèÖÃÂö³åÏìÓ¦ÒÔ¼°¼¤ÀøÂö³å
 % Set the impulse response and excitation of the emit aperture
 impulse_response=sin(2*pi*f0*(0:1/fs:8/f0));
