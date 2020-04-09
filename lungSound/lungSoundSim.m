@@ -85,12 +85,12 @@ for i = 1:repeatNumber                              %卷积次数
     phantom(POINT_position,1) = POINT_Am;
     phantom = phantom(1:N);
     
-    clear j;
-    if POINT_position+4999 > N
-    	phantom(POINT_position:end) = phantom(POINT_position:end).*exp(j*p_phantom_pha(1:(N - POINT_position + 1)));
-    else
-        phantom(POINT_position:POINT_position+4999) = phantom(POINT_position:POINT_position+4999).*exp(j*p_phantom_pha);
-    end
+%     clear j;
+%     if POINT_position+4999 > N
+%     	phantom(POINT_position:end) = phantom(POINT_position:end).*exp(j*p_phantom_pha(1:(N - POINT_position + 1)));
+%     else
+%         phantom(POINT_position:POINT_position+4999) = phantom(POINT_position:POINT_position+4999).*exp(j*p_phantom_pha);
+%     end
     
     PHANTOM(:,i) = phantom;         %存储仿体
     
@@ -130,26 +130,26 @@ title(['M模式',num2str(cir_map),'M']);
 colormap(gray);
 
 %% 相位解调
-xx = 0:(1/prf):(1/prf)*(repeatNumber-1);
-% z  = hilbert(sum(real(echo(6000:6020,:))));                 %希尔伯特变换对的利用---通过实部来求虚部
-z = sum(echo(6000:6020,:));
-x1 = z.*exp(-j*2*pi*prf*xx);
-% x1    = Data_e.*exp(-j*2*pi*fc*t);
-pha   = angle(x1);          % 求取复数信号的相位
-demod = unwrap(pha);        % 相位校正  
-hd   = design(fdesign.lowpass('N,F3dB',16,1.5e6,100e6),'butter');
-demod_fil = filter(hd,demod);
-figure;
-plot(demod_fil);
+% xx = 0:(1/prf):(1/prf)*(repeatNumber-1);
+% % z  = hilbert(sum(real(echo(6000:6020,:))));                 %希尔伯特变换对的利用---通过实部来求虚部
+% z = sum(echo(6000:6020,:));
+% x1 = z.*exp(-j*2*pi*prf*xx);
+% % x1    = Data_e.*exp(-j*2*pi*fc*t);
+% pha   = angle(x1);          % 求取复数信号的相位
+% demod = unwrap(pha);        % 相位校正  
+% hd   = design(fdesign.lowpass('N,F3dB',16,1.5e6,100e6),'butter');
+% demod_fil = filter(hd,demod);
+% figure;
+% plot(demod_fil);
 %% 求arctan2
 for xy = 1:repeatNumber
-    De(xy) = atan2(sum(real(Data_I(xy,6000:6020))),sum(real(Data_Q(xy,6000:6020))));
+    De(xy) = atan2(sum((Data_I(xy,6000:6020))),sum((Data_Q(xy,6000:6020))));
 end
 Dt = unwrap(De);
 hd   = design(fdesign.lowpass('N,F3dB',16,1.5e6,100e6),'butter');
 Dt_fil = filter(hd,Dt);
 figure
-plot(Dt);
+plot(Dt_fil);
 % axis([0 400 -3 4]);
 end
 
