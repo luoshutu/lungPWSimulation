@@ -1,7 +1,7 @@
 clear
 clc
 
-Start = 3;
+Start = 7;
 Num   = 1;
 % figure;
 % hold on;
@@ -9,7 +9,7 @@ for cir_map = Start:Start + Num -1
 %% 参数设置
 f0          = cir_map*(1e6);
 % f0          = 7e6;      % 换能器中心频率 [Hz]
-fs          = 100e6;	% 仿真使用的采样频率
+fs          = 100e6;    % 仿真使用的采样频率
 c           = 1540;     % 声速 [m/s]
 lambda      = c/f0;     % 波长 [m]
 prf         = 500;      %脉冲重复频率Hz/s
@@ -40,7 +40,7 @@ for k = z_muscle
 end
 
 %% 心跳信号设置
-heartRate = 80/60;  %心跳频率，每分钟80次
+heartRate = 60/60;  %心跳频率，每分钟60次
 heartNum  = ceil(prf / heartRate); %一次心跳所占采样线数
 heartSignalAmp = round([0.00 1.00 0.95 0.73 0.20 -0.20 0.06 0.08 -0.03 0.00].*(1e-4 / (z_size / N)));
 heartSignal = interp(heartSignalAmp,round(heartNum/length(heartSignalAmp)));
@@ -55,6 +55,7 @@ v_hum   = 3e-5;                             %哼哼最大幅值，单位m
 % humming = (v_hum/(z_size/N)) * sawtooth(2*pi*f_hum*(0:1/prf:3/f_hum),0.4);
 humming = (v_hum/(z_size/N)) * square(2*pi*f_hum*(0:1/prf:3/f_hum),50);        %占空比为50%的方波
 % humming = (v_hum/(z_size/N)) * (2 * rand(1,round(prf/f_hum)) - 1);
+humming = zeros(length(humming));
 figure;
 plot(humming);
 title('Humming');
@@ -64,7 +65,7 @@ excitation_pulse = sin(2*pi*f0*(0:1/fs:8/f0));
 excitation_pulse = excitation_pulse.*hanning(max(size(excitation_pulse)))';
 
 %% 卷积
-repeatNumber   = 2048;                                                  % 发射次数
+repeatNumber   = 3000;                                                  % 发射次数
 echo           = zeros(N + length(excitation_pulse) - 1,repeatNumber);  % 卷积结果缓存
 PHANTOM        = zeros(N, repeatNumber);                                % 仿体缓存
 dam            = 5e3;                                                   % 仿体衰减,值越小衰减越大
@@ -86,7 +87,7 @@ for i = 1:repeatNumber                              %卷积次数
     
     clear j;
     if POINT_position+4999 > N
-    	phantom(POINT_position:end) = phantom(POINT_position:end).*exp(j*p_phantom_pha(1:(N - POINT_position + 1)));
+        phantom(POINT_position:end) = phantom(POINT_position:end).*exp(j*p_phantom_pha(1:(N - POINT_position + 1)));
     else
         phantom(POINT_position:POINT_position+4999) = phantom(POINT_position:POINT_position+4999).*exp(j*p_phantom_pha);
     end
@@ -143,7 +144,7 @@ end
 % slowTimeSignal_I = filter(hd,slowTimeSignal_I);
 % slowTimeSignal_Q = filter(hd,slowTimeSignal_Q);
 
-%% 慢时间短时傅里叶变换
+% 慢时间短时傅里叶变换
 clear i;
 slowTimeSignal = slowTimeSignal_I + i*slowTimeSignal_Q;
 % hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,10000,5e5,1e6),'butter');
@@ -164,27 +165,49 @@ axis off;
 % axis([1 y x/2 - 20 x/2 + 20]);
 title(['短时傅里叶时频图',num2str(cir_map),'M']);
 
-lateralRes  = 1 / (f0/0.5e6); %unit : mm 假设3兆时，横向分辨率为1毫米
-step = 5;
-ind  = 0;
-for i = 1: step: repeatNumber - 256
-    ind = ind+1;
-    v = heartSignal(mod(i,length(heartSignal))+1);
-
-    distancePerPulse = v/prf;  % v unit mm/s
-    n = lateralRes/distancePerPulse;
-    n = floor (n); 
-    nn(i) = n;
-    lateralFilter = sinc(-abs(n)/2 :0.1: abs(n)/2)/n; %构建一个和频率及速度还有PRF都相关的慢时间方向上的滤波器
- 
-    slowsig = slowTimeSignal (i:i+256);
-%     slowsig = echo(5100,i:i+128);
-%     slowsig = conv (slowsig, lateralFilter, 'same');
-    im(:,ind)= fftshift(abs(fft(slowsig)));
+% lateralRes  = 1 / (f0/0.5e6); %unit : mm 假设3兆时，横向分辨率为1毫米
+% step = 5;
+% ind  = 0;
+% for i = 1: step: repeatNumber - 256
+%     ind = ind+1;
+%     v = heartSignal(mod(i,length(heartSignal))+1);
+% 
+%     distancePerPulse = v/prf;  % v unit mm/s
+%     n = lateralRes/distancePerPulse;
+%     n = floor (n); 
+%     nn(i) = n;
+%     lateralFilter = sinc(-abs(n)/2 :0.1: abs(n)/2)/n; %构建一个和频率及速度还有PRF都相关的慢时间方向上的滤波器
+%  
+%     slowsig = slowTimeSignal (i:i+256);
+% %     slowsig = echo(5100,i:i+128);
+% %     slowsig = conv (slowsig, lateralFilter, 'same');
+%     im(:,ind)= fftshift(abs(fft(slowsig)));
+% end
+% % im(65,:)=0;
+% figure;
+% imagesc(20*log(0.1+im))
+% title(['PW图',num2str(cir_map),'M']);
 end
-% im(65,:)=0;
-figure;
-imagesc(20*log(0.1+im))
-title(['PW图',num2str(cir_map),'M']);
-end
 
+%% 动态显示
+img_line = 200;
+filename='D:\\_MyProject\\MATLAB\\lungPWSimulation\\OneDimension\\200.gif';          %输出路径+保存的文件名.gif
+
+for time = 1:10
+%     figure(time)
+    img = 20*log(1 + abs(Data_Amp(1:D:end,(time-1)*img_line + 1:time*img_line + 1)));
+    imagesc(img);
+    colormap(gray);
+    pause(0.15);
+%     set(gcf,'color','w');  %设置背景为白色
+%     set(gca,'units','pixels','Visible','off');
+%     frame = getframe(gcf); 
+%     im = frame2im(frame);     %将影片动画转换为编址图像,因为图像必须是index索引图像
+%     imshow(im);
+%     [I,map] = rgb2ind(im,20); %将真彩色图像转化为索引图像
+%     if time==1
+%         imwrite(I,map,filename,'gif','Loopcount',inf,'DelayTime',0.15);     %Loopcount只是在i==1的时候才有用
+%     else
+%         imwrite(I,map,filename,'gif','WriteMode','append','DelayTime',0.15);%DelayTime:帧与帧之间的时间间隔
+%     end
+end

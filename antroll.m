@@ -21,6 +21,6 @@ for i =1 : num_lines
 end
 imagesc(echostrength_lung(time,:)); pause(0.1)
 end 
-figure;
-  subplot(121); imagesc(echostrength_liver); title('liver sliding')
-  subplot(122); imagesc(echostrength_lung); title('lung sliding')
+% figure;
+%   subplot(121); imagesc(echostrength_liver); title('liver sliding')
+%   subplot(122); imagesc(echostrength_lung); title('lung sliding')
