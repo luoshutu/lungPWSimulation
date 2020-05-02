@@ -15,7 +15,7 @@ f0             = cir_map*(1e6);
 fs             = 40e6;                % 仿真使用的采样频率
 c              = 1540;                % 声速 [m/s]
 lambda         = c/f0;                % 波长 [m]
-prf            = 30;                  % 帧频Hz/s
+prf            = 500;                 % 帧频Hz/s
 lateralRes     = 1 / (f0/0.5e6);      % unit : mm 假设3兆时，横向分辨率为1毫米
 
 %% 仿体设置
@@ -34,8 +34,8 @@ plot(heartSignal);
 grid on;
 
 %% 仿体随时间变化为二维
-lineNumber   = 1024;                              % 仿体线数
-imgFrame     = 60;                                 % 一共产生几帧图像
+lineNumber   = 15;                                 % 仿体线数
+imgFrame     = 2048;                              % 一共产生几帧图像
 PHANTOM      = zeros(imgFrame, N, lineNumber);    % 仿体缓存
 % 胸模线
 sternumLine = round(hamming(10).*ceil(5e-3 / (z_size / N)));
@@ -55,41 +55,25 @@ for frame_cnt = 1:imgFrame
     breathMove = round(breathWave(mod(frame_cnt, length(breathWave))+1));
     for i = 1:lineNumber                          % 获取二维仿体
         % 仿体线之间的相对移动加上随心跳的移动
-        ster_line_position = round(sternumLine(mod(i, length(sternumLine))+lineNumber/2));
+        ster_line_position = round(sternumLine(mod(i, length(sternumLine))+round(lineNumber/2)));
 %         ster_line_position = round(sternumLine(mod(i+15*breathMove, length(sternumLine))+lineNumber/2));
         ster_line_mobile = frame_mobile + ster_line_position + breathMove;
-        phantom = phantom_line_2(N, ster_line_mobile, i, 20*breathMove);
+        phantom = phantom_line_2(N, ster_line_mobile, i, abs(20*breathMove));
         PHANTOM(frame_cnt, :, i) = phantom;       % 存储仿体
     end
 end
 %% 仿体显示
 figure;
-filename='D:\\_MyProject\\MATLAB\\lungPWSimulation\\Field_II_Sim\\phantom9.gif';          %输出路径+保存的文件名.gif
-% while(1)
-for frame_cnt = 1:imgFrame
-%     figure(frame_cnt);
-    imgPhantom(:,:) = PHANTOM(frame_cnt,:,:);
-    image(20*(1+abs(imgPhantom)));
-    colormap(gray);
-    title('PHANTOM');
-    axis([1 lineNumber 1 N*(650/1000)]);
-    pause(0.03);
-    set(gcf,'color','w');  %设置背景为白色
-    set(gca,'units','pixels','Visible','off');
-    frame = getframe(gcf); 
-    im = frame2im(frame);     %将影片动画转换为编址图像,因为图像必须是index索引图像
-    imshow(im);
-    [I,map] = rgb2ind(im,20); %将真彩色图像转化为索引图像
-    if frame_cnt==1
-        imwrite(I,map,filename,'gif','Loopcount',inf,'DelayTime',0.1);     %Loopcount只是在i==1的时候才有用
-    else
-        imwrite(I,map,filename,'gif','WriteMode','append','DelayTime',0.1);%DelayTime:帧与帧之间的时间间隔
-    end
-end
-% end
-close all;
+clear imgPhantom;
+imgPhantom(:,:) = PHANTOM(:,:,1)';
+image(20*(1+abs(imgPhantom)));
+colormap(gray);
+title('PHANTOM');
+set(gca,'units','pixels','Visible','off');
+axis([1 imgFrame 1 N*(650/1000)]);
+
 %% 画声场图
-fp = cal_field(N,z_size,lineNumber,fs,f0);
+% fp = cal_field(N,z_size,1024,fs,f0);
 
 figure;
 imagesc(20*log(1 + abs(fp)));
@@ -111,30 +95,13 @@ for frame_cnt = 1:imgFrame
 end
 %% Echo显示
 figure;
-filename_E='D:\\_MyProject\\MATLAB\\lungPWSimulation\\Field_II_Sim\\echo9.gif';          %输出路径+保存的文件名.gif
-while(1)
-for frame_cnt = 1:imgFrame
-%     figure(frame_cnt);
-    imgEcho(:,:) = echoBuff(frame_cnt,:,:);
-    imagesc(20*log(10 + real(imgEcho)));
-    colormap(gray);
-    title('卷积回波');
-    axis([1 lineNumber 1 N*(650/1000)]);
-    pause(0.03);
-%     set(gcf,'color','w');  %设置背景为白色
-%     set(gca,'units','pixels','Visible','off');
-%     frame = getframe(gcf); 
-%     im = frame2im(frame);     %将影片动画转换为编址图像,因为图像必须是index索引图像
-%     imshow(im);
-%     [I,map] = rgb2ind(im,20); %将真彩色图像转化为索引图像
-%     if frame_cnt==1
-%         imwrite(I,map,filename_E,'gif','Loopcount',inf,'DelayTime',0.1);     %Loopcount只是在i==1的时候才有用
-%     else
-%         imwrite(I,map,filename_E,'gif','WriteMode','append','DelayTime',0.1);%DelayTime:帧与帧之间的时间间隔
-%     end
-end
-end
-% close all;
+clear imgEcho;
+imgEcho(:,:) = echoBuff(:,:,1)';
+imagesc(20*log(10 + abs(imgEcho)));
+colormap(gray);
+title('卷积回波');
+set(gca,'units','pixels','Visible','off');
+axis([1 imgFrame 1 N*(650/1000)]);
 
 %% IQ解调
 [fra,mm,nn]  = size(echoBuff);
@@ -166,63 +133,45 @@ Data_Amp = sqrt((dataIBuff).*(dataIBuff) + (dataQBuff).*(dataQBuff));
 %% 显示M模式
 D=2;   %  下采样抽取率
 clear imgBModel
-filename_B='D:\\_MyProject\\MATLAB\\lungPWSimulation\\Field_II_Sim\\BModel9.gif';
 figure;
-% while(1)
-for frame_cnt = 1:imgFrame
-%     figure;
-    imgBModel(:,:) = Data_Amp(frame_cnt,1:end,:);
-    imagesc(20*log(1 + abs(imgBModel)));
-    colormap(gray);
-    title(['B模式',num2str(cir_map),'M']);
-    axis([1 lineNumber 1 N*(650/1000)]);
-    pause(0.03);
-    set(gcf,'color','w');  %设置背景为白色
-    set(gca,'units','pixels','Visible','off');
-    frame = getframe(gcf); 
-    im = frame2im(frame);     %将影片动画转换为编址图像,因为图像必须是index索引图像
-    imshow(im);
-    [I,map] = rgb2ind(im,20); %将真彩色图像转化为索引图像
-    if frame_cnt==1
-        imwrite(I,map,filename_B,'gif','Loopcount',inf,'DelayTime',0.1);     %Loopcount只是在i==1的时候才有用
-    else
-        imwrite(I,map,filename_B,'gif','WriteMode','append','DelayTime',0.1);%DelayTime:帧与帧之间的时间间隔
-    end
-end
-% end
-close all;
+imgBModel(:,:) = Data_Amp(:,1:end,1)';
+imagesc(20*log(1 + abs(imgBModel)));
+colormap(gray);
+title(['B模式',num2str(cir_map),'M']);
+axis([1 imgFrame 1 N*(650/1000)]);
+set(gca,'units','pixels','Visible','off');
 %% 累加
-% slowTimeSignal_I = zeros(lineNumber,1);
-% slowTimeSignal_Q = zeros(lineNumber,1);
-% 
-% for j = 1:lineNumber
-%     slowTimeSignal_I(j,1) = sum(Data_I_fil(floor(mm/2 + MobileRange):floor(mm/2 + MobileRange*4),j));
-%     slowTimeSignal_Q(j,1) = sum(Data_Q_fil(floor(mm/2 + MobileRange):floor(mm/2 + MobileRange*4),j));
-% end
-% 
-% % hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,1000,6e6,100e6),'butter');
-% % slowTimeSignal_I_fil = filter(hd,slowTimeSignal_I);
-% % slowTimeSignal_Q_fil = filter(hd,slowTimeSignal_Q);
-% 
-% %% 慢时间短时傅里叶变换
-% clear i;
-% slowTimeSignal = slowTimeSignal_I + i*slowTimeSignal_Q;
-% % hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,10,50e6,100e6),'butter');
-% % slowTimeSignal = filter(hd,slowTimeSignal);
-% 
-% [S,F,T,~] = spectrogram(slowTimeSignal,256,250,256);
-% figure;       
-% S = fftshift(S,1);
-% P = 20*log(1 + abs(S));
-% [x,y] = size(P);
-% % subplot(Num,2,2*(cir_map-Start)+2);
-% imagesc(P); colorbar;
-% set(gca,'YDir','normal');
-% % colormap(gray);
-% xlabel('时间 t/s');ylabel('频率 f/Hz');
-% % axis off;
-% % axis([1 y x/2 - 20 x/2 + 20]);
-% title(['短时傅里叶时频图',num2str(cir_map),'M']);
+slowTimeSignal_I = zeros(imgFrame,1);
+slowTimeSignal_Q = zeros(imgFrame,1);
+
+for idx_j = 1:imgFrame
+    slowTimeSignal_I(idx_j,1) = sum(dataIBuff(idx_j,floor(N/2 + 50):floor(N/2 + 50*2),1));
+    slowTimeSignal_Q(idx_j,1) = sum(dataQBuff(idx_j,floor(N/2 + 50):floor(N/2 + 50*2),1));
+end
+
+% hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,1000,6e6,100e6),'butter');
+% slowTimeSignal_I_fil = filter(hd,slowTimeSignal_I);
+% slowTimeSignal_Q_fil = filter(hd,slowTimeSignal_Q);
+
+%% 慢时间短时傅里叶变换
+clear i;
+slowTimeSignal = slowTimeSignal_I + i*slowTimeSignal_Q;
+% hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,10,50e6,100e6),'butter');
+% slowTimeSignal = filter(hd,slowTimeSignal);
+
+[S,F,T,~] = spectrogram(slowTimeSignal,256,250,256);
+figure;       
+S = fftshift(S,1);
+P = 20*log(100 + abs(S));
+[x,y] = size(P);
+% subplot(Num,2,2*(cir_map-Start)+2);
+imagesc(P); colorbar;
+set(gca,'YDir','normal');
+colormap(gray);
+xlabel('时间 t/s');ylabel('频率 f/Hz');
+% axis off;
+% axis([1 y x/2 - 20 x/2 + 20]);
+title(['短时傅里叶时频图',num2str(cir_map),'M']);
 end
 
 
