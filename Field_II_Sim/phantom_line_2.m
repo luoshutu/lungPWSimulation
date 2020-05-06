@@ -8,7 +8,7 @@ phantom        = zeros(N,1);
 rng(seed);
 amp            = rand(N, 1);                      % 胸模线之上仿体的随机幅度
 
-rng(seed+lungSlip);                                        % 保证每次随机相位都不相同
+rng(seed+lungSlip);                               % 保证每次随机相位都不相同
 p_phantom_pha  = rand(N, 1) * 2 * pi;             % 仿体肺部每个点的相位
 
 % skin
@@ -22,13 +22,13 @@ end
 % fat
 z_fat = randperm(round(N*(170/1000)),round(N*(70/1000))) + round(N*(30/1000));
 for idx_fat = z_fat
-	phantom(idx_fat,1) = amp(idx_fat,1)*2; 
+    phantom(idx_fat,1) = amp(idx_fat,1)*2; 
 end
 
 %muscle
 z_muscle = randperm(round(N*(600/1000)),round(N*(400/1000))) + round(N*(200/1000));
 for idx_muscle = z_muscle
-	phantom(idx_muscle,1) = amp(idx_muscle,1); 
+    phantom(idx_muscle,1) = amp(idx_muscle,1); 
 end
 
 POINT_position = round(N/2 - ster_line_mobile - 5); %THE POINT的位置

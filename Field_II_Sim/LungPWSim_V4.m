@@ -16,39 +16,40 @@ fs             = 40e6;                % 仿真使用的采样频率
 c              = 1540;                % 声速 [m/s]
 lambda         = c/f0;                % 波长 [m]
 prf            = 30;                  % 帧频Hz/s
-lateralRes     = 1 / (f0/0.5e6);      % unit : mm 假设3兆时，横向分辨率为1毫米
 
 %% 仿体设置
-N            = 1000;                 % 仿体点数
+N            = 1000;                  % 仿体点数
 z_size       = 60/1000;               % 仿体深度[m]
 MobileRange  = ceil(4e-3 / (z_size / N));    %点运动范围，4mm
 
 %% 心跳信号设置
 % 肺部会有搏动症，使用M超看应与之前做的单条线的仿真一致
-heartRate = 65/60;  %心跳频率，每分钟65次
-heartNum  = ceil(prf / heartRate); %一次心跳所占采样线数
+heartRate      = 65/60;  %心跳频率，每分钟65次
+heartNum       = ceil(prf / heartRate); %一次心跳所占采样线数
 heartSignalAmp = round([0.00 1.00 0.95 0.73 0.20 -0.20 0.06 0.08 -0.03 0.00].*ceil(4e-4 / (z_size / N)));
-heartSignal = interp(heartSignalAmp,round(heartNum/length(heartSignalAmp)));
-figure;
-plot(heartSignal);
-grid on;
+heartSignal    = interp(heartSignalAmp,round(heartNum/length(heartSignalAmp)));
+% figure;
+% plot(heartSignal);
+% grid on;
 
-%% 仿体随时间变化为二维
-lineNumber   = 1024;                              % 仿体线数
-imgFrame     = 60;                                 % 一共产生几帧图像
-PHANTOM      = zeros(imgFrame, N, lineNumber);    % 仿体缓存
-% 胸模线
-sternumLine = round(hamming(10).*ceil(5e-3 / (z_size / N)));
-sternumLine = interp(sternumLine,round(2*lineNumber/length(sternumLine)));
-% 呼吸波形
-breathRate  = 1;  %呼吸频率,Hz
-breathNum   = ceil(prf / breathRate); %一次呼吸所占帧数
+%% 呼吸波形设置
+breathRate  = 1;                                                %呼吸频率,Hz
+breathNum   = ceil(prf / breathRate);                           %一次呼吸所占帧数
 breathWave  = round(hamming(10).*ceil(1e-3 / (z_size / N)));
 breathWave  = interp(breathWave,round(breathNum/length(breathWave)));
 
 % figure;
 % plot(sternumLine);
 % grid on;
+
+%% 仿体随时间变化为二维
+lineNumber   = 1024;                              % 仿体线数
+imgFrame     = 60;                                % 一共产生几帧图像
+PHANTOM      = zeros(imgFrame, N, lineNumber);    % 仿体缓存
+% 胸模线
+sternumLine = round(hamming(10).*ceil(5e-3 / (z_size / N)));
+sternumLine = interp(sternumLine,round(2*lineNumber/length(sternumLine)));
+
 for frame_cnt = 1:imgFrame
     % 每一帧图片，胸模线会随心跳产生的移动
     frame_mobile = round(heartSignal(mod(frame_cnt, length(heartSignal))+1)); 
@@ -88,7 +89,7 @@ for frame_cnt = 1:imgFrame
 end
 % end
 close all;
-%% 画声场图
+%% 声场
 % fp = cal_field(N,z_size,lineNumber,fs,f0);
 
 figure;
@@ -163,7 +164,7 @@ end
 % Data_Amp = sqrt((Data_I).*(Data_I) + (Data_Q).*(Data_Q));
 Data_Amp = sqrt((dataIBuff).*(dataIBuff) + (dataQBuff).*(dataQBuff));
 
-%% 显示M模式
+%% 显示B模式
 D=2;   %  下采样抽取率
 clear imgBModel
 filename_B='D:\\_MyProject\\MATLAB\\lungPWSimulation\\Field_II_Sim\\Picture\\BModel9_c.gif';
@@ -191,38 +192,6 @@ for frame_cnt = 1:imgFrame
 end
 % end
 close all;
-%% 累加
-% slowTimeSignal_I = zeros(lineNumber,1);
-% slowTimeSignal_Q = zeros(lineNumber,1);
-% 
-% for j = 1:lineNumber
-%     slowTimeSignal_I(j,1) = sum(Data_I_fil(floor(mm/2 + MobileRange):floor(mm/2 + MobileRange*4),j));
-%     slowTimeSignal_Q(j,1) = sum(Data_Q_fil(floor(mm/2 + MobileRange):floor(mm/2 + MobileRange*4),j));
-% end
-% 
-% % hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,1000,6e6,100e6),'butter');
-% % slowTimeSignal_I_fil = filter(hd,slowTimeSignal_I);
-% % slowTimeSignal_Q_fil = filter(hd,slowTimeSignal_Q);
-% 
-% %% 慢时间短时傅里叶变换
-% clear i;
-% slowTimeSignal = slowTimeSignal_I + i*slowTimeSignal_Q;
-% % hd   = design(fdesign.bandpass('N,F3dB1,F3dB2',16,10,50e6,100e6),'butter');
-% % slowTimeSignal = filter(hd,slowTimeSignal);
-% 
-% [S,F,T,~] = spectrogram(slowTimeSignal,256,250,256);
-% figure;       
-% S = fftshift(S,1);
-% P = 20*log(1 + abs(S));
-% [x,y] = size(P);
-% % subplot(Num,2,2*(cir_map-Start)+2);
-% imagesc(P); colorbar;
-% set(gca,'YDir','normal');
-% % colormap(gray);
-% xlabel('时间 t/s');ylabel('频率 f/Hz');
-% % axis off;
-% % axis([1 y x/2 - 20 x/2 + 20]);
-% title(['短时傅里叶时频图',num2str(cir_map),'M']);
 end
 
 

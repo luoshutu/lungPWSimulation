@@ -1,8 +1,8 @@
 function [outputArg1] = cal_field(N,z_size,lineNumber,fs,f0)
 % 用于计算所需要的声场
 %% 初始化
-% path(path,'D:/MATLAB/Field_II_ver_3_24_windows_gcc');
-% field_init;
+path(path,'D:/MATLAB/Field_II_ver_3_24_windows_gcc');
+field_init;
 %% 参数设置
 width          = 0.3/1000;            % 阵元宽度 [m]
 element_height = 5/1000;              % 阵元高度 [m]
