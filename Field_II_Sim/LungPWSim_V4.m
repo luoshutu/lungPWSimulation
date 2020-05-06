@@ -20,7 +20,6 @@ prf            = 30;                  % Ö¡ÆµHz/s
 %% ·ÂÌåÉèÖÃ
 N            = 1000;                  % ·ÂÌåµãÊı
 z_size       = 60/1000;               % ·ÂÌåÉî¶È[m]
-MobileRange  = ceil(4e-3 / (z_size / N));    %µãÔË¶¯·¶Î§£¬4mm
 
 %% ĞÄÌøĞÅºÅÉèÖÃ
 % ·Î²¿»áÓĞ²«¶¯Ö¢£¬Ê¹ÓÃM³¬¿´Ó¦ÓëÖ®Ç°×öµÄµ¥ÌõÏßµÄ·ÂÕæÒ»ÖÂ
@@ -28,8 +27,10 @@ heartRate      = 65/60;  %ĞÄÌøÆµÂÊ£¬Ã¿·ÖÖÓ65´Î
 heartNum       = ceil(prf / heartRate); %Ò»´ÎĞÄÌøËùÕ¼²ÉÑùÏßÊı
 heartSignalAmp = round([0.00 1.00 0.95 0.73 0.20 -0.20 0.06 0.08 -0.03 0.00].*ceil(4e-4 / (z_size / N)));
 heartSignal    = interp(heartSignalAmp,round(heartNum/length(heartSignalAmp)));
-% figure;
-% plot(heartSignal);
+figure;
+plot(heartSignal);
+title('ĞÄÌø²¨ĞÎ');
+axis off;
 % grid on;
 
 %% ºôÎü²¨ĞÎÉèÖÃ
@@ -38,8 +39,10 @@ breathNum   = ceil(prf / breathRate);                           %Ò»´ÎºôÎüËùÕ¼Ö¡Ê
 breathWave  = round(hamming(10).*ceil(1e-3 / (z_size / N)));
 breathWave  = interp(breathWave,round(breathNum/length(breathWave)));
 
-% figure;
-% plot(sternumLine);
+figure;
+plot(breathWave);
+title('ºôÎü²¨ĞÎ');
+axis off;
 % grid on;
 
 %% ·ÂÌåËæÊ±¼ä±ä»¯Îª¶şÎ¬
@@ -65,7 +68,7 @@ for frame_cnt = 1:imgFrame
 end
 %% ·ÂÌåÏÔÊ¾
 figure;
-filename='D:\\_MyProject\\MATLAB\\lungPWSimulation\\Field_II_Sim\\Picture\\phantom9.gif';          %Êä³öÂ·¾¶+±£´æµÄÎÄ¼şÃû.gif
+filename='D:\\_MyProject\\MATLAB\\lungPWSimulation\\Field_II_Sim\\Picture\\phantom10.gif';          %Êä³öÂ·¾¶+±£´æµÄÎÄ¼şÃû.gif
 % while(1)
 for frame_cnt = 1:imgFrame
 %     figure(frame_cnt);
@@ -74,6 +77,7 @@ for frame_cnt = 1:imgFrame
     colormap(gray);
     title('PHANTOM');
     axis([1 lineNumber 1 N*(650/1000)]);
+    axis off;
     pause(0.03);
     set(gcf,'color','w');  %ÉèÖÃ±³¾°Îª°×É«
     set(gca,'units','pixels','Visible','off');
@@ -90,11 +94,12 @@ end
 % end
 close all;
 %% Éù³¡
-% fp = cal_field(N,z_size,lineNumber,fs,f0);
+fp = cal_field(N,z_size,lineNumber,fs,f0);
 
 figure;
 imagesc(20*log(1 + abs(fp)));
-title('Éù³¡');
+title('Éù³¡·Ö²¼¾ØÕó');
+axis off;
 % colormap(gray);
 
 %% ¾í»ıµÃ»Ø²¨
@@ -114,28 +119,28 @@ end
 figure;
 filename_E='D:\\_MyProject\\MATLAB\\lungPWSimulation\\Field_II_Sim\\Picture\\echo9_c.gif';          %Êä³öÂ·¾¶+±£´æµÄÎÄ¼şÃû.gif
 % while(1)
-for frame_cnt = 1:imgFrame
+for frame_cnt = 1
 %     figure(frame_cnt);
     imgEcho(:,:) = echoBuff(frame_cnt,:,:);
     imagesc(20*log(10 + real(imgEcho)));
-%     colormap(gray);
+    colormap(gray);
     title('¾í»ı»Ø²¨');
     axis([1 lineNumber 1 N*(650/1000)]);
     pause(0.03);
-    set(gcf,'color','w');  %ÉèÖÃ±³¾°Îª°×É«
-    set(gca,'units','pixels','Visible','off');
-    frame = getframe(gcf); 
-    im = frame2im(frame);     %½«Ó°Æ¬¶¯»­×ª»»Îª±àÖ·Í¼Ïñ,ÒòÎªÍ¼Ïñ±ØĞëÊÇindexË÷ÒıÍ¼Ïñ
-    imshow(im);
-    [I,map] = rgb2ind(im,20); %½«Õæ²ÊÉ«Í¼Ïñ×ª»¯ÎªË÷ÒıÍ¼Ïñ
-    if frame_cnt==1
-        imwrite(I,map,filename_E,'gif','Loopcount',inf,'DelayTime',0.1);     %LoopcountÖ»ÊÇÔÚi==1µÄÊ±ºò²ÅÓĞÓÃ
-    else
-        imwrite(I,map,filename_E,'gif','WriteMode','append','DelayTime',0.1);%DelayTime:Ö¡ÓëÖ¡Ö®¼äµÄÊ±¼ä¼ä¸ô
-    end
+%     set(gcf,'color','w');  %ÉèÖÃ±³¾°Îª°×É«
+%     set(gca,'units','pixels','Visible','off');
+%     frame = getframe(gcf); 
+%     im = frame2im(frame);     %½«Ó°Æ¬¶¯»­×ª»»Îª±àÖ·Í¼Ïñ,ÒòÎªÍ¼Ïñ±ØĞëÊÇindexË÷ÒıÍ¼Ïñ
+%     imshow(im);
+%     [I,map] = rgb2ind(im,20); %½«Õæ²ÊÉ«Í¼Ïñ×ª»¯ÎªË÷ÒıÍ¼Ïñ
+%     if frame_cnt==1
+%         imwrite(I,map,filename_E,'gif','Loopcount',inf,'DelayTime',0.1);     %LoopcountÖ»ÊÇÔÚi==1µÄÊ±ºò²ÅÓĞÓÃ
+%     else
+%         imwrite(I,map,filename_E,'gif','WriteMode','append','DelayTime',0.1);%DelayTime:Ö¡ÓëÖ¡Ö®¼äµÄÊ±¼ä¼ä¸ô
+%     end
 end
 % end
-close all;
+% close all;
 
 %% IQ½âµ÷
 [fra,mm,nn]  = size(echoBuff);
@@ -167,16 +172,17 @@ Data_Amp = sqrt((dataIBuff).*(dataIBuff) + (dataQBuff).*(dataQBuff));
 %% ÏÔÊ¾BÄ£Ê½
 D=2;   %  ÏÂ²ÉÑù³éÈ¡ÂÊ
 clear imgBModel
-filename_B='D:\\_MyProject\\MATLAB\\lungPWSimulation\\Field_II_Sim\\Picture\\BModel9_c.gif';
+filename_B='D:\\_MyProject\\MATLAB\\lungPWSimulation\\Field_II_Sim\\Picture\\BModel10.gif';
 figure;
 % while(1)
 for frame_cnt = 1:imgFrame
 %     figure;
     imgBModel(:,:) = Data_Amp(frame_cnt,1:end,:);
     imagesc(20*log(1 + abs(imgBModel)));
-%     colormap(gray);
-    title(['BÄ£Ê½',num2str(cir_map),'M']);
+    colormap(gray);
+    title(['BÄ£Ê½³¬ÉùÍ¼Ïñ',num2str(cir_map),'M']);
     axis([1 lineNumber 1 N*(650/1000)]);
+    axis off;
     pause(0.03);
     set(gcf,'color','w');  %ÉèÖÃ±³¾°Îª°×É«
     set(gca,'units','pixels','Visible','off');

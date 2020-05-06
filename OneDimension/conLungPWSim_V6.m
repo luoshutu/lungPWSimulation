@@ -30,13 +30,13 @@ end
 % fat
 z_fat = randperm(round(N*(170/1000)),round(N*(10/1000))) + round(N*(30/1000));
 for j = z_fat
-	phantom_half(j,1) = amp(j,1)*2; 
+    phantom_half(j,1) = amp(j,1)*2; 
 end
 
 %muscle
 z_muscle = randperm(round(N*(300/1000)),round(N*(200/1000))) + round(N*(200/1000));
 for k = z_muscle
-	phantom_half(k,1) = amp(k,1); 
+    phantom_half(k,1) = amp(k,1); 
 end
 
 %% ĞÄÌøĞÅºÅÉèÖÃ

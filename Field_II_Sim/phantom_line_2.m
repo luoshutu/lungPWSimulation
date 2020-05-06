@@ -13,10 +13,10 @@ p_phantom_pha  = rand(N, 1) * 2 * pi;             % 仿体肺部每个点的相位
 
 % skin
 rng(seed);
-% z_skin = randperm(round(N*(30/1000)),round(N*(30/1000)));
-for idx_skin = 1:round(N*(30/1000))
-%     phantom(idx_skin,1) = amp(idx_skin,1) + 0.5;
-    phantom(idx_skin,1) = 2;
+z_skin = randperm(round(N*(30/1000)),round(N*(26/1000)));
+for idx_skin = z_skin
+    phantom(idx_skin,1) = amp(idx_skin,1) + 1;
+%     phantom(idx_skin,1) = 2;
 end
 
 % fat
